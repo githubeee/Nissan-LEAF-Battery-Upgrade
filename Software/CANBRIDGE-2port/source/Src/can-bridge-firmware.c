@@ -35,7 +35,8 @@ typedef enum
 
 // Charge timer minutes lookup values
 static const uint16_t charge_time[4][7] =  {
-                                        {  430, 340,  700,  560, 60, 150, 190 },   /* 24KW */
+                                      //  {  430, 340,  700,  560, 60, 150, 190 },   /* 24KW */
+                                        {  966, 770, 1700, 1340, 80, 370, 460 },   /* 53KW */
                                         {  600, 480,  900,  720, 60, 200, 245 },   /* 30KW */
                                         {  730, 580,  800,  640, 80, 270, 335 },   /* 40KW */
                                         { 1130, 900, 2000, 1600, 80, 430, 535 }    /* 62KW */
@@ -439,7 +440,8 @@ void can_handler(uint8_t can_bus, CAN_FRAME *frame)
                     frame->data[6] = (frame->data[6] & 0xCF) | 0x10;
                 }
             }
-						battery_soc_pptt = (uint16_t) ((frame->data[0] << 2) | ((frame->data[1] & 0xC0) >> 6)); //Capture SOC% 0-100.0%
+			battery_soc_pptt = (uint16_t) ((frame->data[0] << 2) | ((frame->data[1] & 0xC0) >> 6)); //Capture SOC% 0-100.0%
+            battery_soc_pptt = (uint16_t) (1000*(1-(19*(1-battery_soc_pptt/1000)/53))); // Adapted for my 53Kwh pack which swap bigger cell  only
             battery_soc = (uint8_t) (battery_soc_pptt / 10); // Capture SOC% 0-100
 
             calc_crc8(frame);
@@ -636,6 +638,10 @@ void can_handler(uint8_t can_bus, CAN_FRAME *frame)
                 if ((frame->data[5] & 0x10) == 0x00)
 								{ //LB_MAXGIDS is 0, store actual GIDS remaining to this variable
 										GIDS = (uint16_t) ((frame->data[0] << 2) | ((frame->data[1] & 0xC0) >> 6));
+                                        if( My_Battery == MY_BATTERY_24KWH )
+                                        {
+                                            GIDS = (uint16_t) (640*GIDS/280); //640 is the GIDS of 53kwh
+                                        }
 								}
 								//Avoid blinking GOM by always writing remaining GIDS
 								frame->data[0] = (uint8_t)(GIDS >> 2);
